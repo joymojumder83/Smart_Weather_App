@@ -1,6 +1,6 @@
 # smart_weather_app
 
-A new Flutter project.
+This is a smart weather application, good looking UI and vary fast weather forcaster.
 
 ## Getting Started
 
