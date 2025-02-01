@@ -12,7 +12,9 @@ class WeatherApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
+
     return MaterialApp(
+      title: "Smart Weather App",
       theme: ThemeData(
         useMaterial3: true,
         textTheme: GoogleFonts.latoTextTheme(textTheme).copyWith(

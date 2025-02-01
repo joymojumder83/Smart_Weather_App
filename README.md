@@ -1,6 +1,6 @@
 # smart_weather_app
 
-A new Flutter project.
+Smart Weather App: Your go-to source for up-to-the-minute weather forecasts. Get accurate and detailed information, including current conditions, hourly and daily predictions, and more, all in a sleek and easy-to-use interface. 1  Stay prepared for any weather condition with Smart Weather App. 
 
 ## Getting Started
 
