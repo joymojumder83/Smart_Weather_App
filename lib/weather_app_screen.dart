@@ -1,8 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'dart:convert';
+import 'package:country_data/country_data.dart';
+import 'package:smart_weather_app/pages/CurrentPage/currentPageScreen.dart';
+import 'package:smart_weather_app/pages/ForecastPage/forecastPageScreen.dart';
+import 'package:unity_ads_plugin/unity_ads_plugin.dart';
+import 'package:flutter/foundation.dart';
 
 class WeatherAppScreen extends StatefulWidget {
   const WeatherAppScreen({super.key});
@@ -12,11 +18,66 @@ class WeatherAppScreen extends StatefulWidget {
 }
 
 class _WeatherAppScreenState extends State<WeatherAppScreen> {
+  bool isForecast = false;
+  List<Country> countries = CountryData().getCountries();
+
+  @override
+  void initState() {
+    super.initState();
+
+    UnityAds.init(
+      gameId: defaultTargetPlatform == TargetPlatform.android
+          ? "${dotenv.env["android_ads_code"]}"
+          : '${dotenv.env["ios_ads_code"]}',
+      onComplete: () {
+        UnityAds.load(
+          placementId: 'Rewarded_Android',
+        );
+        UnityAds.load(
+          placementId: 'Interstitial_Android',
+        );
+        UnityAds.load(
+          placementId: 'Banner_Android',
+        );
+      },
+      onFailed: (error, message) =>
+          print('Initialization Failed: $error $message'),
+    );
+  }
+
   void handleClick(String value) {
     switch (value) {
-      case 'Logout':
+      case 'Current Weather':
+        setState(() {
+          isForecast = false;
+        });
+        Future.delayed(
+          Duration(seconds: 1),
+          () {
+            UnityAds.load(
+              placementId: "Interstitial_Android",
+              onComplete: (placementId) {
+                UnityAds.showVideoAd(placementId: placementId);
+              },
+            );
+          },
+        );
         break;
-      case 'Settings':
+      case 'Forecast Weather':
+        setState(() {
+          isForecast = true;
+        });
+        Future.delayed(
+          Duration(seconds: 1),
+          () {
+            UnityAds.load(
+              placementId: "Rewarded_Android",
+              onComplete: (placementId) {
+                UnityAds.showVideoAd(placementId: placementId);
+              },
+            );
+          },
+        );
         break;
     }
   }
@@ -24,22 +85,34 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
   final SearchController _searchController = SearchController();
 
   Future<Map<String, dynamic>> fetchWeatherApi() async {
+    String cityName = isForecast ? "London" : "auto:ip";
     try {
-      String cityName = "auto:ip";
+      if (_searchController.text.isNotEmpty) {
+        String capitalizeText = _searchController.text[0].toUpperCase() +
+            _searchController.text.substring(1);
+
+        if (countries.map((e) => e.capital).contains(capitalizeText) ||
+            countries.map((e) => e.name).contains(capitalizeText)) {
+          cityName = _searchController.text;
+        }
+      }
+
       final String url =
-          "http://api.weatherapi.com/v1/current.json?key=3cdcd96882c445cfbaa121359253101&q=$cityName";
+          "http://api.weatherapi.com/v1/forecast.json?key=${dotenv.env["weather_api_key"]}&days=7&q=$cityName";
+
       final uri = Uri.parse(url);
       final response = await http.get(uri);
 
       final body = response.body;
       final json = jsonDecode(body);
+
       if (json["cod"] != "200") {
-        return Future.delayed(Duration(seconds: 2), () => json);
+        return json;
       } else {
-        throw "Unsparted Error Occured";
+        throw "Internal Server Error";
       }
     } catch (e) {
-      throw "Unsparted Error Occured";
+      throw "Unspacted Error Occured";
     }
   }
 
@@ -64,6 +137,7 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
             ),
           );
         }
+
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
@@ -99,19 +173,10 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
 
         final String locationName = snapshot.data!["location"]["name"];
         final String countryName = snapshot.data!["location"]["country"];
-        // location name length condition for controlling font size
-        double locationNameLength;
-        if (countryName.length <= 9 && countryName.length >= 1) {
-          locationNameLength = 32;
-        } else if (countryName.length <= 12 && countryName.length >= 10) {
-          locationNameLength = 28;
-        } else if (countryName.length <= 15 && countryName.length >= 13) {
-          locationNameLength = 25;
-        } else if (countryName.length <= 18 && countryName.length >= 16) {
-          locationNameLength = 22;
-        } else {
-          locationNameLength = 20;
-        }
+
+        final double windSpeed = snapshot.data!["current"]["wind_kph"];
+        final num humidity = snapshot.data!["current"]["humidity"];
+        final List forcasterDays = snapshot.data!["forecast"]["forecastday"];
 
         // gif condition and color condition for more ui control
         final colorAll = (
@@ -145,13 +210,17 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
           case "Partly cloudy" when isDay == 0:
             showGif = "assets/gifs/weather_night.gif";
             singleColor = colorAll.$10;
-          case "Clear" when isDay == 0 || isDay == 0:
+          case "Clear" when isDay == 0:
             showGif = "assets/gifs/weather_night.gif";
             singleColor = colorAll.$5;
-          case "Rain" || "Light rain":
+          case "Rain" ||
+                "Light rain" ||
+                "Heavy rain" ||
+                "Patchy rain nearby" ||
+                "Moderate rain":
             showGif = "assets/gifs/weather_rainy.gif";
             singleColor = colorAll.$6;
-          case "Foggy" || "Mist":
+          case "Foggy" || "Mist" || "Patchy fog" || "Fog":
             showGif = "assets/gifs/weather_foggy.gif";
             singleColor = colorAll.$7;
           case "Snow":
@@ -160,12 +229,37 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
           case "Storm":
             showGif = "assets/gifs/weather_storm.gif";
             singleColor = colorAll.$9;
+          default:
+            showGif = "assets/gifs/sunny_gif.gif";
+            singleColor = colorAll.$1;
         }
         final double feelsLike = snapshot.data!["current"]["feelslike_c"];
 
         return Scaffold(
           resizeToAvoidBottomInset: false,
           appBar: AppBar(
+            title: isForecast
+                ? Row(
+                    children: [
+                      const Icon(
+                        Icons.location_on_outlined,
+                        size: 30,
+                        color: Colors.black54,
+                      ),
+                      Text(
+                        '$locationName, ${countryName.length > 15 ? countryName.substring(0, 10) : countryName}',
+                        style: TextStyle(
+                          fontSize: locationName.length <= 9 &&
+                                  locationName.length >= 1
+                              ? 22
+                              : 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black54,
+                        ),
+                      ),
+                    ],
+                  )
+                : null,
             actions: <Widget>[
               PopupMenuButton<String>(
                 onSelected: handleClick,
@@ -173,10 +267,11 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
                 iconSize: 45,
                 elevation: 10,
                 padding: const EdgeInsets.fromLTRB(15, 0, 15, 0),
-                color: Colors.white70,
+                color: Colors.white,
                 iconColor: Colors.black54,
                 itemBuilder: (BuildContext context) {
-                  return {'Logout', 'Settings', 'Help'}.map((String choice) {
+                  return {'Current Weather', 'Forecast Weather'}
+                      .map((String choice) {
                     return PopupMenuItem<String>(
                       padding: const EdgeInsets.fromLTRB(40, 20, 40, 20),
                       value: choice,
@@ -200,7 +295,6 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
                 child: SearchAnchor(
                   builder: (context, controller) {
                     return SearchBar(
-                      controller: _searchController,
                       hintText: "Search City",
                       onTap: () => controller.openView(),
                       textCapitalization: TextCapitalization.words,
@@ -236,22 +330,25 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
                       ),
                     );
                   },
+                  searchController: _searchController,
                   suggestionsBuilder: (context, controller) {
-                    return ["London", "New York", "Tokyo"].map(
+                    return countries.map(
                       (suggestion) {
                         return ListTile(
-                          title: Text(suggestion),
+                          title:
+                              Text("${suggestion.emoji} ${suggestion.capital}"),
                           onTap: () {
-                            controller.clear();
                             setState(() {
-                              _searchController.text = suggestion;
+                              controller.clear();
+                              _searchController.text = suggestion.capital;
                             });
                           },
                         );
                       },
-                    ).toList();
+                    );
                   },
                   viewBackgroundColor: Colors.white54,
+                  viewElevation: 5,
                   viewOnSubmitted: (value) => setState(() {
                     _searchController.text = value;
                   }),
@@ -260,110 +357,31 @@ class _WeatherAppScreenState extends State<WeatherAppScreen> {
               ),
             ),
           ),
-          body: Padding(
-            padding: const EdgeInsets.all(20.0),
-            child: Column(
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 45,
-                      color: Colors.black54,
-                    ),
-                    Text(
-                      '$locationName, $countryName',
-                      style: TextStyle(
-                        fontSize: locationNameLength,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black54,
-                      ),
-                    ),
-                  ],
+          body: isForecast == true
+              ? ForecastPageScreen(
+                  locationName: locationName,
+                  countryName: countryName,
+                  formattedDate: formattedDate,
+                  showGif: showGif,
+                  singleColor: singleColor,
+                  temperature: temperature,
+                  windSpeed: windSpeed,
+                  weatherCondition: weatherCondition,
+                  humidity: humidity,
+                  forecastList: forcasterDays,
+                )
+              : CurrentPageScreen(
+                  locationName: locationName,
+                  countryName: countryName,
+                  formattedDate: formattedDate,
+                  showGif: showGif,
+                  singleColor: singleColor,
+                  temperature: temperature,
+                  feelsLike: feelsLike,
+                  weatherCondition: weatherCondition,
                 ),
-                Text(
-                  formattedDate,
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
-                  ),
-                ),
-                Image.asset(
-                  showGif,
-                  width: 250,
-                  height: 250,
-                ),
-              ],
-            ),
-          ),
-          bottomSheet: Stack(
-            clipBehavior: Clip.none,
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: double.infinity,
-                height: 300.0,
-                decoration: BoxDecoration(
-                  color: Color(singleColor),
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(50),
-                    topRight: Radius.circular(50),
-                  ),
-                ),
-              ),
-              Positioned(
-                top: -80,
-                width: 320,
-                height: 300,
-                child: Container(
-                  padding: const EdgeInsets.all(15.0),
-                  decoration: const BoxDecoration(
-                    color: Colors.white70,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: Offset(0, 3), // changes position of shadow
-                      ),
-                    ],
-                    borderRadius: BorderRadius.all(
-                      Radius.circular(20),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        "$temperature°C",
-                        style: GoogleFonts.aDLaMDisplay(
-                          fontSize: 70,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black45,
-                        ),
-                      ),
-                      Text(
-                        weatherCondition,
-                        style: TextStyle(
-                          fontSize: 30,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black45,
-                        ),
-                      ),
-                      Text(
-                        "Feel's Like $feelsLike°C",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black45,
-                        ),
-                      )
-                    ],
-                  ),
-                ),
-              )
-            ],
+          bottomNavigationBar: UnityBannerAd(
+            placementId: 'Banner_Android',
           ),
         );
       },

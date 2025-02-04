@@ -73,6 +73,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.19.0"
+  country_data:
+    dependency: "direct main"
+    description:
+      name: country_data
+      sha256: "1a93b2cf933b42813087803c366c3e8a7ba40aec98cf0c28556f9cf9ae497adf"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.2"
   crypto:
     dependency: transitive
     description:
@@ -110,6 +118,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_dotenv:
+    dependency: "direct main"
+    description:
+      name: flutter_dotenv
+      sha256: b7c7be5cd9f6ef7a78429cabd2774d3c4af50e79cb2b7593e3d5d763ef95c61b
+      url: "https://pub.dev"
+    source: hosted
+    version: "5.2.1"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -368,6 +384,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.4.0"
+  unity_ads_plugin:
+    dependency: "direct main"
+    description:
+      name: unity_ads_plugin
+      sha256: "85621dbec3202d472f1bd762fee68605d31596890606ff9b29f96975666e403a"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.3.23"
   vector_math:
     dependency: transitive
     description:
