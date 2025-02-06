@@ -1,5 +1,5 @@
 name: smart_weather_app
-description: "A new Flutter project."
+description: "Smart Weather is a Flutter app that provides comprehensive weather information, displaying both current conditions and a detailed forecast. Get up-to-date weather details and plan your week ahead with accurate and easy-to-understand forecasts."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: "none" # Remove this line if you wish to publish to pub.dev
@@ -46,6 +46,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_launcher_icons: "^0.14.3"
+  change_app_package_name: ^1.4.0
 
 flutter_launcher_icons:
   android: "launcher_icon"
